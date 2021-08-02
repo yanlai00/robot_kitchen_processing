@@ -6,6 +6,7 @@ import pickle
 import numpy as np
 import json
 from pathlib import Path
+from multiprocessing import Pool
 
 path_data = '/home/asap7772/asap7772/real_data_kitchen/bridge_data'
 fd = os.listdir(path_data)
@@ -86,16 +87,10 @@ def process_dc(path): #processes each data collection attempt
     all_dicts = list()
 
     # Data collected prior to 7-23 has a delay of 2, otherwise a delay of 1
-    try:
-        metadata_dir = os.path.join(path, 'collection_metadata.json')
-    except FileNotFoundError as e:
-        print(e)
-        deldir(path)
-        return []
-    metadata_dict = json.load(open(metadata_dir))
-    camera_variation = metadata_dict['camera_variation']
-    date = camera_variation.split('_')[0]
-    month, day = date.split('-')
+    date_time = path.split('/')[-1]
+    date = date_time.split('_')[0]
+    month, day = date.split('-')[1], date.split('-')[2]
+
     month, day = int(month), int(day)
     print(month, day)
     if month > 7 or (month == 7 and day >= 23):
@@ -153,10 +148,16 @@ def make_numpy(path, outpath): # overarching npy creation
     np.save(os.path.join(outpath, 'out.npy'), lst)
     print('saved', os.path.join(outpath, 'out.npy'))
 
+def make_numpy_wrapped(tp):
+    make_numpy(tp, conv_string(tp))
+
+
 if __name__ == "__main__":
-    target_path = '/home/yanlaiyang/real_data_kitchen/'
-    conv_string = lambda x: target_path + 'bridge_data_numpy' + x.split('bridge_data')[1]
+    conv_string = lambda x: x.split('bridge_data')[0] + 'bridge_data_numpy_shifted' + x.split('bridge_data')[1]
     for p in fd:
+        tps = []
         for t in os.listdir(p):
             tp = os.path.join(p,t)
-            make_numpy(tp, conv_string(tp))
+            tps.append(tp)
+        with Pool(16) as pool:
+            pool.map(make_numpy_wrapped, tps)
