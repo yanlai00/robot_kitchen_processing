@@ -81,7 +81,7 @@ def process_actions(path): # gets actions
 
 def process_dc(path): #processes each data collection attempt
     # print(path)
-    if path[-4:] == 'lmdb':
+    if 'lmdb' in path:
         return []
 
     all_dicts = list()
